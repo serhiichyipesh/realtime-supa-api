@@ -14,8 +14,11 @@
 /coverage
 
 # next.js
+**/next/
+**/out/
+
 # misc
-.DS_Store
+**/.DS_Store
 *.pem
 
 # debug
