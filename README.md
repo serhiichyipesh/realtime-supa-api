@@ -66,7 +66,7 @@ REDIS_PORT=your_redis_port
 REDIS_PASSWORD=your_redis_password
 REDIS_USERNAME=your_redis_username
 
-ALLOWED_ORIGIN=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
 ## Development

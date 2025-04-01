@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "serve": "node --loader ts-node/esm ./src/app.ts",
+    "start": "node ./dist/app.js",
     "dev": "nodemon --watch src --ext ts --exec \"node --loader ts-node/esm ./src/app.ts\"",
     "lint": "eslint src/**/*.ts",
     "build": "tsc"
