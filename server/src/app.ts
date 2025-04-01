@@ -17,7 +17,9 @@ import { LoggerService } from './services/logger-service.js';
 import { SupabaseService } from './services/supabase-service.js';
 
 const PORT = process.env.PORT || 3001;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000'];
 
 const supabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +31,7 @@ export const cacheService = new CacheService();
 export const loggerService = new LoggerService();
 
 const app: Application = express();
-app.use(cors({ origin: ALLOWED_ORIGIN }));
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(errorHandler);
 app.use(bodyParser.json());
 
@@ -48,7 +50,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: ALLOWED_ORIGIN,
+    origin: ALLOWED_ORIGINS,
     methods: ['GET', 'POST'],
   },
 });
