@@ -1,20 +1,20 @@
+import { FG_GREEN, FG_MAGENTA, RESET } from './lib/constants.js';
 import {
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   createClient,
 } from '@supabase/supabase-js';
-import { FG_GREEN, FG_MAGENTA, RESET } from './lib/constants.js';
 
-import bodyParser from 'body-parser';
-import cors from 'cors';
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import { subscribeToDBChange } from './lib/utils.js';
-import { errorHandler } from './middleware/error-handler.js';
-import tableRoutes from './routes/table-routes.js';
 import { CacheService } from './services/cache-service.js';
 import { LoggerService } from './services/logger-service.js';
+import { Server } from 'socket.io';
 import { SupabaseService } from './services/supabase-service.js';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import { errorHandler } from './middleware/error-handler.js';
+import express from 'express';
+import http from 'http';
+import { subscribeToDBChange } from './lib/utils.js';
+import tableRoutes from './routes/table-routes.js';
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
@@ -29,7 +29,7 @@ export const cacheService = new CacheService();
 export const loggerService = new LoggerService();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: ALLOWED_ORIGIN }));
 app.use(errorHandler);
 app.use(bodyParser.json());
 
