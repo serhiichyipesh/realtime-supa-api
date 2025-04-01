@@ -19,7 +19,7 @@ export default tseslint.config(
       'no-duplicate-imports': 'error',
 
       'no-unused-expressions': 'error',
-      'no-param-reassign': ['error', { 'props': false }]
+      'no-param-reassign': ['error', { props: false }],
     },
-  },
+  }
 );

@@ -1,25 +1,41 @@
-import NodeCache from 'node-cache';
+import { RedisClientType, createClient } from 'redis';
+
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class CacheService {
-  private cache: NodeCache;
+  private client: RedisClientType;
 
   constructor() {
-    this.cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
+    this.client = createClient({
+      username: process.env.REDIS_USERNAME,
+      password: process.env.REDIS_PASSWORD,
+      socket: {
+        host: process.env.REDIS_HOST,
+        port: +(process.env.REDIS_PORT || '18978'),
+      },
+    });
+    this.client.on('error', (err) =>
+      console.error('[Redis Client Error]:', err)
+    );
+    this.client.connect().catch(console.error);
   }
 
-  get(key: string) {
-    return this.cache.get(key);
+  async get(key: string) {
+    const result = await this.client.get(key);
+    return result ? JSON.parse(result) : null;
   }
 
-  set(key: string, data: unknown, ttl: number = 300) {
-    return this.cache.set(key, data, ttl);
+  async set(key: string, data: unknown, ttl: number = 60) {
+    await this.client.set(key, JSON.stringify(data), { EX: ttl });
   }
 
-  invalidate(key: string) {
-    return this.cache.del(key);
+  async invalidate(key: string) {
+    return await this.client.del(key);
   }
 
-  invalidateAll() {
-    return this.cache.flushAll();
+  async invalidateAll() {
+    await this.client.flushAll();
   }
 }
