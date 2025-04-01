@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const MINUTE = 60;
+
 export class CacheService {
   private client: RedisClientType;
 
@@ -27,7 +29,7 @@ export class CacheService {
     return result ? JSON.parse(result) : null;
   }
 
-  async set(key: string, data: unknown, ttl: number = 60) {
+  async set(key: string, data: unknown, ttl: number = MINUTE) {
     await this.client.set(key, JSON.stringify(data), { EX: ttl });
   }
 

@@ -1,15 +1,23 @@
-import { createClient } from '@supabase/supabase-js';
+import {
+  REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
+  createClient,
+} from '@supabase/supabase-js';
+import { FG_GREEN, FG_MAGENTA, RESET } from './lib/constants.js';
+
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
+import { subscribeToDBChange } from './lib/utils.js';
 import { errorHandler } from './middleware/error-handler.js';
 import tableRoutes from './routes/table-routes.js';
 import { CacheService } from './services/cache-service.js';
+import { LoggerService } from './services/logger-service.js';
 import { SupabaseService } from './services/supabase-service.js';
 
 const PORT = process.env.PORT || 3001;
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
 
 const supabaseClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,11 +26,17 @@ const supabaseClient = createClient(
 
 export const supabase = new SupabaseService(supabaseClient);
 export const cacheService = new CacheService();
+export const loggerService = new LoggerService();
 
 const app = express();
 app.use(cors());
 app.use(errorHandler);
 app.use(bodyParser.json());
+
+app.use((req, _, next) => {
+  loggerService.info('Incoming request', { method: req.method, url: req.url });
+  next();
+});
 
 app.get('/', (_, res) => {
   res.send('OK');
@@ -31,45 +45,62 @@ app.get('/', (_, res) => {
 app.use('/table', tableRoutes);
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: '*', // Adjust this for your production environment
+    origin: ALLOWED_ORIGIN,
     methods: ['GET', 'POST'],
   },
 });
 
-// Listen for Socket.IO connections
 io.on('connection', (socket) => {
-  console.log('New Socket.IO connection:', socket.id);
-  // Optionally, you could handle subscription events from clients here.
+  loggerService.info('New Socket.IO connection:', { socketId: socket.id });
+  socket.on('disconnect', (reason) => {
+    loggerService.info('Socket disconnected', { socketId: socket.id, reason });
+  });
 });
 
-const tableSubscription = supabaseClient
-  .channel('table')
-  .on(
-    'postgres_changes',
-    {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'table',
-    },
-    (payload) => {
-      cacheService.invalidate('table');
-      io.emit('table_insert', payload.new);
-      console.log(
-        'Supabase insert event received and emitted via Socket.IO:',
-        payload
-      );
-    }
-  )
-  .subscribe();
+const insertSubscription = subscribeToDBChange({
+  channel: 'table:insert',
+  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT,
+  table: 'table',
+  handler: (payload) => {
+    loggerService.info('Table insert', { payload });
+    cacheService.invalidate('table');
+    io.emit('table_insert', payload.new);
+  },
+  supabase: supabaseClient,
+});
 
-process.on('SIGINT', async () => {
-  console.log('Shutting down server...');
-  await tableSubscription.unsubscribe();
-  process.exit(0);
+const deleteSubscription = subscribeToDBChange({
+  channel: 'table:delete',
+  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.DELETE,
+  table: 'table',
+  handler: (payload) => {
+    loggerService.info('Table delete', { payload });
+    cacheService.invalidate('table');
+    io.emit('table_delete', payload.old);
+  },
+  supabase: supabaseClient,
 });
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  const message = `
+    ${FG_MAGENTA}          Time: ${new Date().toLocaleString()}${RESET}
+    ${FG_GREEN} 🚀  Server is up and running on port ${PORT}  🚀${RESET}
+  `;
+
+  loggerService.info(message);
+});
+
+['SIGINT', 'SIGTERM'].forEach((signal) => {
+  process.on(signal, async () => {
+    const fgRed = '\x1b[31m';
+    loggerService.info(`${fgRed}Shutting down server... (${signal})`);
+    await Promise.all([
+      insertSubscription.unsubscribe(),
+      deleteSubscription.unsubscribe(),
+    ]);
+    process.exit(0);
+  });
 });

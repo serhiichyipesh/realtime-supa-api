@@ -20,6 +20,14 @@ export default tseslint.config(
 
       'no-unused-expressions': 'error',
       'no-param-reassign': ['error', { props: false }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          varsIgnorePattern: '^_',
+          argsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_'
+        }
+      ],
     },
   }
 );
