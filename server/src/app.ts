@@ -104,3 +104,5 @@ server.listen(PORT, () => {
     process.exit(0);
   });
 });
+
+export default app;
